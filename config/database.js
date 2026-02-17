@@ -2,9 +2,17 @@ import mongoose from 'mongoose';
 
 const connectDatabase = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
+    const uri = process.env.MONGODB_URI || process.env.MONGO_URI || process.env.DATABASE_URL;
+
+    if (!uri) {
+      console.error('❌ Missing MongoDB connection string. Set the MONGODB_URI environment variable.');
+      console.error('   Example: MONGODB_URI=mongodb://localhost:27017/your-db-name');
+      process.exit(1);
+    }
+
+    const conn = await mongoose.connect(uri, {
+      // Recommended options can be added here if needed
+      // serverSelectionTimeoutMS: 5000,
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
