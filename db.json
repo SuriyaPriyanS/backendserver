@@ -1,0 +1,24 @@
+{
+  "dailyCalorieGoal": 2000,
+  "caloriesConsumed": 1650,
+  "caloriesBurned": 450,
+  "waterIntake": 1750,
+  "waterGoal": 2500,
+  "meals": {
+    "breakfast": [
+      { "name": "Oatmeal with Berries", "calories": 320, "quantity": 1, "unit": "bowl" },
+      { "name": "Greek Yogurt", "calories": 150, "quantity": 1, "unit": "cup" }
+    ],
+    "lunch": [
+      { "name": "Grilled Chicken Salad", "calories": 450, "quantity": 1, "unit": "serving" },
+      { "name": "Whole Grain Roll", "calories": 120, "quantity": 1, "unit": "piece" }
+    ],
+    "dinner": [
+      { "name": "Salmon with Quinoa", "calories": 380, "quantity": 1, "unit": "serving" },
+      { "name": "Steamed Broccoli", "calories": 55, "quantity": 1, "unit": "cup" }
+    ],
+    "snacks": [
+      { "name": "Mixed Nuts", "calories": 175, "quantity": 28, "unit": "g" }
+    ]
+  }
+}
