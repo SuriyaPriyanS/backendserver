@@ -98,7 +98,7 @@ const PORT = process.env.PORT || 4001;
 const startServer = async () => {
   try {
     // ✅ Connect DB FIRST
-    await connectDatabase();
+    // await connectDatabase();
 
     const server = app.listen(PORT, () => {
       console.log('\n' + '='.repeat(60));

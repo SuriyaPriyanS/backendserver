@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const connectDatabase = async () => {
   try {
     const mongoUri =
-      process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/wellness-dashboard";
+      process.env.MONGODB_URI ;
 
     await mongoose.connect(mongoUri);
 
