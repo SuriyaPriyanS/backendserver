@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const connectDatabase = async () => {
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/wellness-dashboard';
+    const mongoUri = process.env.MONGODB_URI;
     
     await mongoose.connect(mongoUri, {
       serverSelectionTimeoutMS: 10000, // Wait up to 10 seconds to select a server
