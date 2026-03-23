@@ -1,6 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import 'dotenv/config';
+
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
@@ -26,7 +26,18 @@ dotenv.config();
 const app = express();
 
 // Connect to MongoDB
-connectDatabase();
+let isConnected = false;
+let connectionError = null;
+
+const initializeApp = async () => {
+  try {
+    await connectDatabase();
+    isConnected = true;
+  } catch (error) {
+    connectionError = error;
+    console.warn('⚠️ Starting server without database connection. Requests will fail until DB is available.');
+  }
+};
 
 // Middleware
 app.use(helmet()); // Security headers
@@ -88,13 +99,29 @@ app.use(errorHandler); // Global error handler
 // Start server
 const PORT = process.env.PORT || 4001;
 
-const server = app.listen(PORT, () => {
+const startServer = async () => {
+  await initializeApp();
+  
+  const server = app.listen(PORT, () => {
   console.log('\n' + '='.repeat(60));
   console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode`);
   console.log(`📡 Listening on port ${PORT}`);
   console.log(`🌐 API URL: http://localhost:${PORT}`);
   console.log(`📚 API Docs: http://localhost:${PORT}/api`);
+  console.log(isConnected ? '✅ Database connected' : '⚠️ Database connection pending');
   console.log('='.repeat(60) + '\n');
+  });
+  
+  return server;
+};
+
+// Start the application
+let server;
+startServer().then(s => {
+  server = s;
+}).catch(err => {
+  console.error('Fatal error starting server:', err);
+  process.exit(1);
 });
 
 // Handle unhandled promise rejections
