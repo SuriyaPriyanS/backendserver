@@ -1,14 +1,15 @@
 import express from 'express';
 import dotenv from 'dotenv';
-
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import mongoose from 'mongoose';
+
 import connectDatabase from './config/database.js';
 import errorHandler, { notFound } from './middleware/errorHandler.js';
 
-// Import routes
+// Routes
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import healthRoutes from './routes/health.js';
@@ -19,39 +20,31 @@ import goalRoutes from './routes/goals.js';
 import achievementRoutes from './routes/achievements.js';
 import dashboardRoutes from './routes/dashboard.js';
 
-// Load environment variables
+// ✅ Load env FIRST
 dotenv.config();
 
 // Initialize app
 const app = express();
 
-// Connect to MongoDB
-let isConnected = false;
-let connectionError = null;
-
-const initializeApp = async () => {
-  try {
-    await connectDatabase();
-    isConnected = true;
-  } catch (error) {
-    connectionError = error;
-    console.warn('⚠️ Starting server without database connection. Requests will fail until DB is available.');
-  }
-};
-
 // Middleware
-app.use(helmet()); // Security headers
-app.use(morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'combined')); // Logging
-app.use(cors({
-  origin: 
-  "*", // Adjust as needed for production
-  credentials: true
-}));
+app.use(helmet());
+
+app.use(
+  morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'combined')
+);
+
+app.use(
+  cors({
+    origin: '*', // 🔥 change in production
+    credentials: true,
+  })
+);
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// API Routes
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/health', healthRoutes);
@@ -62,13 +55,26 @@ app.use('/api/goals', goalRoutes);
 app.use('/api/achievements', achievementRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
-// Health check route
+// Health Check
 app.get('/api/health-check', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Server is running',
+  const dbState = mongoose.connection.readyState;
+
+  const dbStatus =
+    dbState === 1
+      ? 'connected'
+      : dbState === 2
+      ? 'connecting'
+      : 'disconnected';
+
+  res.status(dbState === 1 ? 200 : 503).json({
+    success: dbState === 1,
+    message:
+      dbState === 1
+        ? 'Server and DB ready'
+        : 'DB not connected',
+    dbStatus,
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV
+    environment: process.env.NODE_ENV,
   });
 });
 
@@ -78,66 +84,64 @@ app.get('/', (req, res) => {
     success: true,
     message: 'Health & Wellness API Server',
     version: '1.0.0',
-    endpoints: {
-      auth: '/api/auth',
-      users: '/api/users',
-      health: '/api/health',
-      nutrition: '/api/nutrition',
-      activities: '/api/activities',
-      sleep: '/api/sleep',
-      goals: '/api/goals',
-      achievements: '/api/achievements',
-      dashboard: '/api/dashboard'
-    }
   });
 });
 
 // Error handlers
-app.use(notFound); // 404 handler
-app.use(errorHandler); // Global error handler
+app.use(notFound);
+app.use(errorHandler);
 
-// Start server
+// PORT
 const PORT = process.env.PORT || 4001;
 
+// ✅ START SERVER PROPERLY
 const startServer = async () => {
-  await initializeApp();
-  
-  const server = app.listen(PORT, () => {
-  console.log('\n' + '='.repeat(60));
-  console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode`);
-  console.log(`📡 Listening on port ${PORT}`);
-  console.log(`🌐 API URL: http://localhost:${PORT}`);
-  console.log(`📚 API Docs: http://localhost:${PORT}/api`);
-  console.log(isConnected ? '✅ Database connected' : '⚠️ Database connection pending');
-  console.log('='.repeat(60) + '\n');
-  });
-  
-  return server;
+  try {
+    // ✅ Connect DB FIRST
+    await connectDatabase();
+
+    const server = app.listen(PORT, () => {
+      console.log('\n' + '='.repeat(60));
+      console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode`);
+      console.log(`📡 Listening on port ${PORT}`);
+      console.log(`🌐 http://localhost:${PORT}`);
+      console.log('✅ MongoDB Connected');
+      console.log('='.repeat(60) + '\n');
+    });
+
+    return server;
+  } catch (err) {
+    console.error('❌ Server start failed:', err.message);
+    process.exit(1);
+  }
 };
 
-// Start the application
+// Start app
 let server;
-startServer().then(s => {
-  server = s;
-}).catch(err => {
-  console.error('Fatal error starting server:', err);
-  process.exit(1);
-});
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-  console.error(`❌ Unhandled Rejection: ${err.message}`);
-  console.error(err.stack);
-  // Close server & exit process
-  server.close(() => process.exit(1));
-});
-
-// Handle SIGTERM
-process.on('SIGTERM', () => {
-  console.log('👋 SIGTERM received. Shutting down gracefully...');
-  server.close(() => {
-    console.log('✅ Process terminated');
+startServer()
+  .then((s) => {
+    server = s;
+  })
+  .catch((err) => {
+    console.error('Fatal error:', err);
   });
+
+// Handle errors
+process.on('unhandledRejection', (err) => {
+  console.error(`❌ Unhandled Rejection: ${err.message}`);
+  if (server) {
+    server.close(() => process.exit(1));
+  } else {
+    process.exit(1);
+  }
+});
+
+process.on('SIGTERM', () => {
+  console.log('👋 SIGTERM received');
+  if (server) {
+    server.close(() => console.log('✅ Server closed'));
+  }
 });
 
 export default app;
